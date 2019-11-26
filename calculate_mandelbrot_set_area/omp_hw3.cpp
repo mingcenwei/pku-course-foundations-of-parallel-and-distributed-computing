@@ -19,7 +19,8 @@ namespace
 {
     using std::size_t;
 
-    using RealNumber = long double;
+    // using RealNumber = long double;
+    using RealNumber = double;
     using ComplexNumber = std::complex<RealNumber>;
 }
 

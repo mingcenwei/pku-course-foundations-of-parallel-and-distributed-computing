@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "vimrc": "viml",
+        "*.plist": "xml",
+        "attributes": "properties",
+        "ignore": "ignore",
+        "config": "ssh_config",
+        "sshd_config": "ssh_config",
+        "*.tpp": "cpp",
+        "complex": "cpp"
+    }
+}

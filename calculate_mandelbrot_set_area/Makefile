@@ -7,7 +7,6 @@ CXXFLAGS    := \
 	-Wconversion \
 	-Wsign-conversion \
 	-fopenmp \
-	-fconstexpr-ops-limit=10000000000000 \
 
 LDFLAGS     := \
 

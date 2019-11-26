@@ -2,12 +2,12 @@
 #define FPDC_2019__MANDELBROT_SET_HPP
 
 #include <array>
-#include <atomic>
+// #include <atomic>
 #include <complex>
 #include <cstddef>
-#include <functional>
+// #include <functional>
 #include <limits>
-#include <optional>
+// #include <optional>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -309,7 +309,7 @@ namespace Fpdc2019
     class MandelbrotSetGrid
     {
         private:
-            using  _MS = MandelbrotSet<ComplexNumber>;
+            using _MS = MandelbrotSet<ComplexNumber>;
             using _RealNumber = typename ComplexNumber::value_type;
 
             Grid
