@@ -1,6 +1,6 @@
 CXX         := -c++
 CXXFLAGS    := \
-	-std=gnu++17 \
+	-std=gnu++2a \
 	-pedantic-errors \
 	-Wall \
 	-Wextra \
