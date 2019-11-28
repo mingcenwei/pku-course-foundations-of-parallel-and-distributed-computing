@@ -8,8 +8,10 @@
             "label": "clang++ build active file",
             "command": "/usr/bin/clang++",
             "args": [
-                "-std=c++17",
+                "-std=gnu++2a",
                 "-g",
+                "-fopenmp",
+                "-I${workspaceFolder}/include",
                 "${file}",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}",

@@ -4,7 +4,7 @@
             "name": "Mac",
             "includePath":
             [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/include/**"
             ],
             "defines": [],
             "macFrameworkPath":
@@ -12,7 +12,8 @@
                 "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks"
             ],
             "compilerPath": "/usr/bin/clang++",
-            "intelliSenseMode": "clang-x64"
+            "intelliSenseMode": "clang-x64",
+            "cppStandard": "c++20"
         }
     ],
     "version": 4
