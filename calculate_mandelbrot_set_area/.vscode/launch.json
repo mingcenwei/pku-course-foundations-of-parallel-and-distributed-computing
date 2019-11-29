@@ -15,7 +15,8 @@
             "environment": [],
             "externalConsole": false,
             "MIMode": "lldb",
-            "preLaunchTask": "clang++ build active file"
+            "preLaunchTask": "clang++ build active file",
+            "targetArchitecture": "x64"
         }
     ]
 }

@@ -6,6 +6,10 @@
             [
                 "${workspaceFolder}/include/**"
             ],
+            "browse":
+            {
+                "path": ["${workspaceFolder}/include/"]
+            },
             "defines": [],
             "macFrameworkPath":
             [

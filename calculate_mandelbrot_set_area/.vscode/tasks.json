@@ -8,9 +8,12 @@
             "label": "clang++ build active file",
             "command": "/usr/bin/clang++",
             "args": [
+                "-Xpreprocessor",
+                "-fopenmp",
+                "-lomp",
                 "-std=gnu++2a",
                 "-g",
-                "-fopenmp",
+                // "-fopenmp",
                 "-I${workspaceFolder}/include",
                 "${file}",
                 "-o",
