@@ -392,7 +392,7 @@ namespace Fpdc2019
             static inline constexpr _RealNumber
             k_sampleRealAxisStepOffset {0.0};
             static inline constexpr _RealNumber
-            k_sampleImagAxisStepOffset {0.0};
+            k_sampleImagAxisStepOffset {1.0};
 
             static constexpr ComplexNumber gridCoordsToComplexNum
             (std::size_t const rowI, std::size_t const columnI);
