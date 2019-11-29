@@ -1,6 +1,8 @@
 #ifndef FPDC_2019__MANDELBROT_SET_HPP
 #define FPDC_2019__MANDELBROT_SET_HPP
 
+#include "omp.h"
+
 #include <array>
 // #include <atomic>
 #include <complex>
@@ -8,9 +10,10 @@
 // #include <functional>
 #include <limits>
 // #include <optional>
+// #include <stdexcept>
 #include <type_traits>
 #include <utility>
-#include <variant>
+// #include <variant>
 
 namespace Fpdc2019
 {
@@ -45,20 +48,21 @@ namespace Fpdc2019
     class IterationStopCriterion
     {
         private:
-            static inline constexpr std::size_t
-            _k_defaultMaxIterationCount {100};
-
             std::size_t _remainingIterationCount;
             bool _shouldStop;
 
         public:
+            static inline constexpr std::size_t
+            k_defaultMaxIterationCount {100};
+
             constexpr IterationStopCriterion()
             :
-                _remainingIterationCount {_k_defaultMaxIterationCount},
+                _remainingIterationCount {k_defaultMaxIterationCount},
                 _shouldStop {false}
             {}
 
-            constexpr IterationStopCriterion(std::size_t maxIterationCount)
+            constexpr IterationStopCriterion
+            (std::size_t const maxIterationCount)
             :
                 _remainingIterationCount {maxIterationCount},
                 _shouldStop {false}
@@ -72,58 +76,96 @@ namespace Fpdc2019
 
     using Coordinates = std::pair<std::size_t, std::size_t>;
 
-    template <typename... Ts>
-    using GridElement = std::variant<std::monostate, Ts...>;
+    // template <typename... Ts>
+    // using GridElement = std::variant<std::monostate, Ts...>;
 
     template
     <
         std::size_t numOfRows,
         std::size_t numOfColumns,
-        typename... Ts
+        typename _GridElement
     >
     class Grid
     {
         private:
-            using _GridElement = GridElement<Ts...>;
+            // using _GridElement = GridElement<Ts...>;
             using _Row = std::array<_GridElement, numOfColumns>;
             using _BaseGrid = std::array<_Row, numOfRows>;
 
             template <typename Function>
             static constexpr bool _isInitFunctionOfTwoIndices_v
             {
-                std::disjunction_v
-                <
-                    std::is_invocable_r
-                    <std::variant<Ts...>, Function, std::size_t, std::size_t>,
-                    std::is_invocable_r
-                    <Ts, Function, std::size_t, std::size_t>...
-                >
+                // std::disjunction_v
+                // <
+                //     std::is_invocable_r
+                //     <std::variant<Ts...>, Function, std::size_t, std::size_t>,
+                //     std::is_invocable_r
+                //     <Ts, Function, std::size_t, std::size_t>...
+                // >
+                []()
+                {
+                    if constexpr
+                    (std::is_invocable_v<Function, std::size_t, std::size_t>)
+                    {
+                        return std::is_assignable_v
+                        <
+                            _GridElement,
+                            std::invoke_result_t
+                            <Function, std::size_t, std::size_t>
+                        >;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }()
             };
 
             template <typename Function>
             static constexpr bool _isInitFunctionOfCoordinates_v
             {
-                std::disjunction_v
-                <
-                    std::is_invocable_r
-                    <std::variant<Ts...>, Function, Coordinates>,
-                    std::is_invocable_r
-                    <Ts, Function, Coordinates>...
-                >
+                // std::disjunction_v
+                // <
+                //     std::is_invocable_r
+                //     <std::variant<Ts...>, Function, Coordinates>,
+                //     std::is_invocable_r
+                //     <Ts, Function, Coordinates>...
+                // >
+                []()
+                {
+                    if constexpr (std::is_invocable_v<Function, Coordinates>)
+                    {
+                        return std::is_assignable_v
+                        <
+                            _GridElement,
+                            std::invoke_result_t<Function, Coordinates>
+                        >;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }()
             };
 
             template <typename T>
             static constexpr bool _isDefaultValue_v
             {
-                (
-                    std::disjunction_v<std::is_same<T, Ts>...> ||
-                    std::is_same_v<T, std::variant<Ts...>>
-                )
-                &&
-                (
-                    !_isInitFunctionOfTwoIndices_v<T> &&
-                    !_isInitFunctionOfCoordinates_v<T>
-                )
+                // (
+                //     std::disjunction_v<std::is_same<T, Ts>...> ||
+                //     std::is_same_v<T, std::variant<Ts...>>
+                // )
+                // &&
+                // (
+                //     !_isInitFunctionOfTwoIndices_v<T> &&
+                //     !_isInitFunctionOfCoordinates_v<T>
+                // )
+                std::conjunction_v
+                <
+                    std::bool_constant<!_isInitFunctionOfTwoIndices_v<T>>,
+                    std::bool_constant<!_isInitFunctionOfCoordinates_v<T>>,
+                    std::is_assignable<_GridElement, T>
+                >
             };
 
             _BaseGrid _baseGrid;
@@ -136,8 +178,9 @@ namespace Fpdc2019
                 // row.fill(defaultValue);
                 for (std::size_t columnI {0}; columnI < numOfColumns; ++columnI)
                 {
-                    using Variant = std::decay_t<decltype(row.at(columnI))>;
-                    row.at(columnI) = Variant {defaultValue};
+                    // using Variant = std::decay_t<decltype(row.at(columnI))>;
+                    // row.at(columnI) = Variant {defaultValue};
+                    row.at(columnI) = _GridElement {defaultValue};
                 }
 
                 _BaseGrid grid;
@@ -192,6 +235,7 @@ namespace Fpdc2019
             }
 
         public:
+            using GridElement_t = _GridElement;
             static inline constexpr std::size_t k_numOfRows {numOfRows};
             static inline constexpr std::size_t k_numOfColumns {numOfColumns};
 
@@ -303,6 +347,7 @@ namespace Fpdc2019
     template
     <
         typename ComplexNumber,
+        bool usingUpperHalfOnly=true,
         std::size_t numOfRows=k_defaultNumOfRows,
         std::size_t numOfColumns=k_defaultNumOfColumns
     >
@@ -329,6 +374,25 @@ namespace Fpdc2019
         public:
             static inline constexpr std::size_t k_numOfRows {numOfRows};
             static inline constexpr std::size_t k_numOfColumns {numOfColumns};
+            static inline constexpr _RealNumber k_gridLeftBound
+            {_MS::k_realPartLowerBound};
+            static inline constexpr _RealNumber k_gridRightBound
+            {_MS::k_realPartUpperBound};
+            static inline constexpr _RealNumber k_gridBottomBound
+            {usingUpperHalfOnly ? 0.0 : _MS::k_imagPartLowerBound};
+            static inline constexpr _RealNumber k_gridTopBound
+            {_MS::k_imagPartUpperBound};
+            static inline constexpr _RealNumber k_gridArea
+            {
+                (k_gridRightBound - k_gridLeftBound) *
+                (k_gridTopBound - k_gridBottomBound)
+            };
+
+            // TODO
+            static inline constexpr _RealNumber
+            k_sampleRealAxisStepOffset {0.0};
+            static inline constexpr _RealNumber
+            k_sampleImagAxisStepOffset {0.0};
 
             static constexpr ComplexNumber gridCoordsToComplexNum
             (std::size_t const rowI, std::size_t const columnI);
@@ -348,11 +412,15 @@ namespace Fpdc2019
             (Coordinates const coords)
             {return gridCoordsOutOfRange(coords.first, coords.second);}
 
-            static constexpr bool complexNumOutOfRange
+            static constexpr bool complexNumOutOfGridRange
+            (ComplexNumber const complexNumber);
+
+            static constexpr bool complexNumOutOfMandelbrotSetRange
             (ComplexNumber const complexNumber);
 
             constexpr MandelbrotSetGrid()
-            : _valueAfterIterationsGrid {ComplexNumber {0.0}}
+            // : _valueAfterIterationsGrid {_MS::k_initValueForIteration}
+            : _valueAfterIterationsGrid {}
             {}
 
             constexpr void iterateOneMoreTime
@@ -381,30 +449,41 @@ namespace Fpdc2019
             constexpr _RealNumber getApproximatedArea()
             {
                 std::size_t count {0};
-                for (std::size_t rowI {0}; rowI < numOfRows; ++rowI)
+
+                // for (std::size_t rowI {0}; rowI < numOfRows; ++rowI)
+                // {
+                //     for
+                //     (std::size_t columnI {0}; columnI < numOfColumns; ++columnI)
+                //     {
+                //         auto& element
+                //         {_valueAfterIterationsGrid.get(rowI, columnI)};
+
+                //         if
+                //         (
+                //             // std::holds_alternative<ComplexNumber>(element) &&
+                //             std::get<ComplexNumber>(element) != k_complexInfinity<ComplexNumber>
+                //         )
+                //         {
+                //             ++count;
+                //         }
+                //     }
+                // }
+
+                #pragma omp parallel for collapse(2) reduction(+: count)
+                for (std::size_t rowI = 0; rowI < numOfRows; ++rowI)
                 {
                     for
-                    (std::size_t columnI {0}; columnI < numOfColumns; ++columnI)
+                    (std::size_t columnI = 0; columnI < numOfColumns; ++columnI)
                     {
-                        auto& element
+                        auto const& value
                         {_valueAfterIterationsGrid.get(rowI, columnI)};
 
-                        if
-                        (
-                            // std::holds_alternative<ComplexNumber>(element) &&
-                            std::get<ComplexNumber>(element) != k_complexInfinity<ComplexNumber>
-                        )
+                        if (value != k_complexInfinity<ComplexNumber>)
                         {
                             ++count;
                         }
                     }
                 }
-
-                constexpr _RealNumber rectangularArea
-                {
-                    (_MS::k_realPartUpperBound - _MS::k_realPartLowerBound) *
-                    (_MS::k_imagPartUpperBound - _MS::k_imagPartLowerBound)
-                };
 
                 _RealNumber const proportion
                 {
@@ -412,7 +491,15 @@ namespace Fpdc2019
                     static_cast<_RealNumber>(numOfRows * numOfColumns)
                 };
 
-                return rectangularArea * proportion;
+                if constexpr (usingUpperHalfOnly)
+                {
+                    return 2 * k_gridArea * proportion;
+                }
+                else
+                {
+                    return k_gridArea * proportion;
+                }
+
             }
     };
 }

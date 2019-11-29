@@ -3,6 +3,8 @@
 
 #include "MandelbrotSet.hpp"
 
+#include "omp.h"
+
 #include <cstddef>
 #include <complex>
 #include <stdexcept>
@@ -72,9 +74,35 @@ namespace Fpdc2019
     constexpr void IterationStopCriterion<ComplexNumber>::update
     (ComplexNumber const newValue, ComplexNumber const previousValue)
     {
+        // switch (_remainingIterationCount)
+        // {
+        //     case 0:
+        //         _shouldStop = true;
+        //         break;
+        //     case 1:
+        //         --_remainingIterationCount;
+        //         _shouldStop = true;
+        //         break;
+        //     default:
+        //         if (false /* TODO */)
+        //         {}
+        //         else
+        //         {
+        //             static_cast<void>(newValue);
+        //             static_cast<void>(previousValue);
+        //         }
+        //         break;
+        // }
+
+        // if (_remainingIterationCount == 0)
+        // {
+        //     _shouldStop = true;
+        //     return;
+        // }
+
         --_remainingIterationCount;
 
-        if (_remainingIterationCount <= 0)
+        if (_remainingIterationCount == 0)
         {
             _shouldStop = true;
         }
@@ -85,41 +113,45 @@ namespace Fpdc2019
             static_cast<void>(newValue);
             static_cast<void>(previousValue);
         }
+
+        return;
     }
 
     template
     <
         typename ComplexNumber,
+        bool usingUpperHalfOnly,
         std::size_t numOfRows,
         std::size_t numOfColumns
     >
-    constexpr ComplexNumber
-    MandelbrotSetGrid<ComplexNumber, numOfRows, numOfColumns>::
+    constexpr ComplexNumber MandelbrotSetGrid
+    <ComplexNumber, usingUpperHalfOnly, numOfRows, numOfColumns>::
     gridCoordsToComplexNum(std::size_t const rowI, std::size_t const columnI)
     {
-        if (gridCoordsOutOfRange(rowI, columnI))
+        if (rowI > numOfRows || columnI > numOfColumns)
         {
             throw std::out_of_range {"Grid coordinates out of range"};
         }
 
         constexpr auto horizontalStep
-        {
-            (_MS::k_realPartUpperBound - _MS::k_realPartLowerBound) / numOfColumns
-        };
+        {(k_gridRightBound - k_gridLeftBound) / numOfColumns};
 
         constexpr auto verticalStep
-        {_MS::k_imagPartUpperBound / numOfRows};
+        {(k_gridTopBound - k_gridBottomBound) / numOfRows};
 
         auto const numericColumnI
-        {static_cast<decltype(horizontalStep)>(columnI) + 0.5};
+        {
+            static_cast<decltype(horizontalStep)>(columnI) + k_sampleRealAxisStepOffset
+        };
 
         auto const numericRowI
-        {static_cast<decltype(verticalStep)>(rowI) + 0.5};
+        {
+            static_cast<decltype(verticalStep)>(rowI) + k_sampleImagAxisStepOffset
+        };
 
-        auto const realAxis
-        {_MS::k_realPartLowerBound + numericColumnI * horizontalStep};
+        auto const realAxis {k_gridLeftBound + numericColumnI * horizontalStep};
 
-        auto const imagAxis {numericRowI * verticalStep};
+        auto const imagAxis {k_gridBottomBound + numericRowI * verticalStep};
 
         return ComplexNumber {realAxis, imagAxis};
     }
@@ -128,11 +160,11 @@ namespace Fpdc2019
     constexpr std::ptrdiff_t _constexpr_floor(RealNumber const num)
     {
         std::ptrdiff_t const numTruncated {static_cast<std::ptrdiff_t>(num)};
-        if (num == static_cast<RealNumber>(numTruncated))
-        {
-            return numTruncated;
-        }
-        else if (num > 0)
+        if
+        (
+            num == static_cast<RealNumber>(numTruncated) ||
+            num > 0
+        )
         {
             return numTruncated;
         }
@@ -145,29 +177,30 @@ namespace Fpdc2019
     template
     <
         typename ComplexNumber,
+        bool usingUpperHalfOnly,
         std::size_t numOfRows,
         std::size_t numOfColumns
     >
-    constexpr Coordinates
-    MandelbrotSetGrid<ComplexNumber, numOfRows, numOfColumns>::
+    constexpr Coordinates MandelbrotSetGrid
+    <ComplexNumber, usingUpperHalfOnly, numOfRows, numOfColumns>::
     complexNumToGridCoords(ComplexNumber const complexNumber)
     {
-        if (complexNumOutOfRange(complexNumber))
+        if (complexNumOutOfGridRange(complexNumber))
         {
             throw std::range_error {"Complex number out of range"};
         }
 
         constexpr auto horizontalStep
-        {
-            (_MS::k_realPartUpperBound - _MS::k_realPartLowerBound) / numOfColumns
-        };
+        {(k_gridRightBound - k_gridLeftBound) / numOfColumns};
 
-        constexpr auto verticalStep {_MS::imagPartUpperBound / numOfRows};
+        constexpr auto verticalStep
+        {(k_gridTopBound - k_gridBottomBound) / numOfRows};
 
         auto const realAxisOffset
-        {std::real(complexNumber) - _MS::k_realPartLowerBound};
+        {std::real(complexNumber) - k_gridLeftBound};
 
-        auto const imagAxisOffset {std::imag(complexNumber)};
+        auto const imagAxisOffset
+        {std::imag(complexNumber) - k_gridBottomBound};
 
         auto const numericColumnI {realAxisOffset / horizontalStep};
         auto const numericRowI {imagAxisOffset / verticalStep};
@@ -198,11 +231,33 @@ namespace Fpdc2019
     template
     <
         typename ComplexNumber,
+        bool usingUpperHalfOnly,
         std::size_t numOfRows,
         std::size_t numOfColumns
     >
-    constexpr bool MandelbrotSetGrid<ComplexNumber, numOfRows, numOfColumns>::
-    complexNumOutOfRange(ComplexNumber const complexNumber)
+    constexpr bool MandelbrotSetGrid
+    <ComplexNumber, usingUpperHalfOnly, numOfRows, numOfColumns>::
+    complexNumOutOfGridRange(ComplexNumber const complexNumber)
+    {
+        auto const realPart {std::real(complexNumber)};
+        auto const imagPart {std::imag(complexNumber)};
+
+        return realPart < k_gridLeftBound ||
+            realPart > k_gridRightBound ||
+            imagPart < k_gridBottomBound ||
+            imagPart > k_gridTopBound;
+    }
+
+    template
+    <
+        typename ComplexNumber,
+        bool usingUpperHalfOnly,
+        std::size_t numOfRows,
+        std::size_t numOfColumns
+    >
+    constexpr bool MandelbrotSetGrid
+    <ComplexNumber, usingUpperHalfOnly, numOfRows, numOfColumns>::
+    complexNumOutOfMandelbrotSetRange(ComplexNumber const complexNumber)
     {
         auto const realPart {std::real(complexNumber)};
         auto const imagPart {std::imag(complexNumber)};
@@ -216,25 +271,40 @@ namespace Fpdc2019
     template
     <
         typename ComplexNumber,
+        bool usingUpperHalfOnly,
         std::size_t numOfRows,
         std::size_t numOfColumns
     >
-    constexpr void MandelbrotSetGrid<ComplexNumber, numOfRows, numOfColumns>::
+    constexpr void MandelbrotSetGrid
+    <ComplexNumber, usingUpperHalfOnly, numOfRows, numOfColumns>::
     iterateOneMoreTime(std::size_t const rowI, std::size_t const columnI)
     {
-        auto& element {_valueAfterIterationsGrid.get(rowI, columnI)};
-        auto const parameter {gridCoordsToComplexNum(rowI, columnI)};
+        // auto& element {_valueAfterIterationsGrid.get(rowI, columnI)};
+        // auto const parameter {gridCoordsToComplexNum(rowI, columnI)};
 
-        if
-        (
-            // std::holds_alternative<ComplexNumber>(element) &&
-            std::get<ComplexNumber>(element) != k_complexInfinity<ComplexNumber>
-        )
+        // if
+        // (
+        //     // std::holds_alternative<ComplexNumber>(element) &&
+        //     std::get<ComplexNumber>(element) != k_complexInfinity<ComplexNumber>
+        // )
+        // {
+        //     auto& value {std::get<ComplexNumber>(element)};
+        //     value = _MS::iteratedFunction(value, parameter);
+
+        //     if (complexNumOutOfRange(value))
+        //     {
+        //         value = k_complexInfinity<ComplexNumber>;
+        //     }
+        // }
+
+        auto& value {_valueAfterIterationsGrid.get(rowI, columnI)};
+
+        if (value != k_complexInfinity<ComplexNumber>)
         {
-            auto& value {std::get<ComplexNumber>(element)};
+            auto const parameter {gridCoordsToComplexNum(rowI, columnI)};
             value = _MS::iteratedFunction(value, parameter);
 
-            if (complexNumOutOfRange(value))
+            if (complexNumOutOfMandelbrotSetRange(value))
             {
                 value = k_complexInfinity<ComplexNumber>;
             }
@@ -246,11 +316,13 @@ namespace Fpdc2019
     template
     <
         typename ComplexNumber,
+        bool usingUpperHalfOnly,
         std::size_t numOfRows,
         std::size_t numOfColumns
     >
     template <typename StopCriterion>
-    constexpr void MandelbrotSetGrid<ComplexNumber, numOfRows, numOfColumns>::
+    constexpr void MandelbrotSetGrid
+    <ComplexNumber, usingUpperHalfOnly, numOfRows, numOfColumns>::
     iterateUntil
     (
         std::size_t const rowI,
@@ -258,52 +330,81 @@ namespace Fpdc2019
         StopCriterion criterion
     )
     {
-        while (!criterion.shouldStop())
-        {
-            auto& element {_valueAfterIterationsGrid.get(rowI, columnI)};
-            auto const parameter {gridCoordsToComplexNum(rowI, columnI)};
+        // while (!criterion.shouldStop())
+        // {
+        //     auto& element {_valueAfterIterationsGrid.get(rowI, columnI)};
+        //     auto const parameter {gridCoordsToComplexNum(rowI, columnI)};
 
-            if
-            (
-                // std::holds_alternative<ComplexNumber>(element) &&
-                std::get<ComplexNumber>(element) != k_complexInfinity<ComplexNumber>
-            )
+        //     if
+        //     (
+        //         // std::holds_alternative<ComplexNumber>(element) &&
+        //         std::get<ComplexNumber>(element) != k_complexInfinity<ComplexNumber>
+        //     )
+        //     {
+        //         auto& value {std::get<ComplexNumber>(element)};
+        //         auto const previousValue {value};
+        //         value = _MS::iteratedFunction(value, parameter);
+
+        //         if (complexNumOutOfRange(value))
+        //         {
+        //             value = k_complexInfinity<ComplexNumber>;
+        //             break;
+        //         }
+
+        //         criterion.update(value, previousValue);
+        //     }
+        //     else
+        //     {
+        //         break;
+        //     }
+
+        // }
+
+        auto& value {_valueAfterIterationsGrid.get(rowI, columnI)};
+        auto const parameter {gridCoordsToComplexNum(rowI, columnI)};
+
+        if (k_complexInfinity<ComplexNumber> == value)
+        {
+            return;
+        }
+        else
+        {
+            while (!criterion.shouldStop())
             {
-                auto& value {std::get<ComplexNumber>(element)};
                 auto const previousValue {value};
                 value = _MS::iteratedFunction(value, parameter);
 
-                if (complexNumOutOfRange(value))
+                if (complexNumOutOfMandelbrotSetRange(value))
                 {
                     value = k_complexInfinity<ComplexNumber>;
                     break;
                 }
-
-                criterion.update(value, previousValue);
-            }
-            else
-            {
-                break;
+                else
+                {
+                    criterion.update(value, previousValue);
+                }
             }
 
+            return;
         }
-
-        return;
     }
 
     template
     <
         typename ComplexNumber,
+        bool usingUpperHalfOnly,
         std::size_t numOfRows,
         std::size_t numOfColumns
     >
     template <typename StopCriterion>
-    constexpr void MandelbrotSetGrid<ComplexNumber, numOfRows, numOfColumns>::
+    constexpr void MandelbrotSetGrid
+    <ComplexNumber, usingUpperHalfOnly, numOfRows, numOfColumns>::
     iterateAllUntil(StopCriterion criterion)
     {
-        for (std::size_t rowI {0}; rowI < numOfRows; ++rowI)
+        #pragma omp parallel for collapse(2)
+        for (std::size_t rowI = 0; rowI < numOfRows; ++rowI)
         {
-            for (std::size_t columnI {0}; columnI < numOfColumns; ++columnI)
+            for (std::size_t columnI = 0; columnI < numOfColumns; ++columnI)
             {
                 iterateUntil(rowI, columnI, criterion);
             }

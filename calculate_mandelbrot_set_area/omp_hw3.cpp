@@ -50,11 +50,30 @@ namespace
         cout << std::fixed << setprecision(8) << duration << "\n";
     }
 
-    constexpr RealNumber computeMandelbrotSetArea()
+    template
+    <
+        bool usingUpperHalfOnly=true,
+        std::size_t numOfRows=k_defaultNumOfRows,
+        std::size_t numOfColumns=k_defaultNumOfColumns
+    >
+    // constexpr RealNumber computeMandelbrotSetArea()
+    RealNumber computeMandelbrotSetArea
+    (
+        std::size_t const maxIterationCount=
+        IterationStopCriterion<ComplexNumber>::k_defaultMaxIterationCount
+    )
     {
-        MandelbrotSetGrid<ComplexNumber> mandelbrotSetGrid {};
-        mandelbrotSetGrid.iterateAllUntil
-        (IterationStopCriterion<ComplexNumber> {});
+        MandelbrotSetGrid
+        <
+            ComplexNumber,
+            usingUpperHalfOnly,
+            numOfRows,
+            numOfColumns
+        > mandelbrotSetGrid {};
+
+        IterationStopCriterion<ComplexNumber> stopCriterion {maxIterationCount};
+
+        mandelbrotSetGrid.iterateAllUntil(stopCriterion);
 
         return mandelbrotSetGrid.getApproximatedArea();
     }
@@ -64,12 +83,19 @@ int main(int argc, char* argv[])
 {
     static_cast<void>(argc);
     static_cast<void>(argv);
-
-    using namespace Fpdc2019;
     std::ios::sync_with_stdio(false);
 
     auto const startTime {omp_get_wtime()};
-    constexpr RealNumber computedMandelbrotSetArea {computeMandelbrotSetArea()};
+    // constexpr RealNumber computedMandelbrotSetArea {computeMandelbrotSetArea()};
+    const RealNumber computedMandelbrotSetArea
+    {
+        computeMandelbrotSetArea
+        <
+            true,
+            5300,
+            1000
+        >(10000)
+    };
     auto const duration {omp_get_wtime() - startTime};
 
     outputResults(computedMandelbrotSetArea, duration);
