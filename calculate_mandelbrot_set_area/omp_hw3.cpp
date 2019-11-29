@@ -89,18 +89,12 @@ int main(int argc, char* argv[])
     // constexpr RealNumber computedMandelbrotSetArea {computeMandelbrotSetArea()};
     const RealNumber computedMandelbrotSetArea
     {
-        // computeMandelbrotSetArea
-        // <
-        //     true,
-        //     5300,
-        //     1000
-        // >(10000)
         computeMandelbrotSetArea
         <
             true,
-            900,
+            500,
             100
-        >(950)
+        >(900)
     };
     auto const duration {omp_get_wtime() - startTime};
 

@@ -262,10 +262,10 @@ namespace Fpdc2019
         auto const realPart {std::real(complexNumber)};
         auto const imagPart {std::imag(complexNumber)};
 
-        return realPart < _MS::k_realPartLowerBound ||
-            realPart > _MS::k_realPartUpperBound ||
-            imagPart < _MS::k_imagPartLowerBound ||
-            imagPart > _MS::k_imagPartUpperBound;
+        return realPart < -2.0 ||
+            realPart > 2.0 ||
+            imagPart < -2.0 ||
+            imagPart > 2.0;
     }
 
     template
